@@ -59,8 +59,16 @@ class CPTC_Widget extends WP_Widget {
     function widget( $args, $instance ) {
         $vars = array();
         
-        $vars['title'] = '';
-        $vars['type'] = '';
+        $vars = array_merge( $args,
+            array(
+                'title' => '',
+                'type' => '',
+                'count' => '',
+                'prefix' => '',
+                'tax' => '',
+                'term' => '',
+            )
+        );
         
         if( isset( $instance['title'] ) )
             $vars['title'] = apply_filters( 'widget_title', $instance['title'] );
