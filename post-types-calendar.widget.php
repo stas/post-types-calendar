@@ -68,6 +68,18 @@ class CPTC_Widget extends WP_Widget {
         if( isset( $instance['type'] ) )
             $vars['type'] = $instance['type'];
         
+        if( isset( $instance['count'] ) )
+            $vars['count'] = $instance['count'];
+        
+        if( isset( $instance['prefix'] ) )
+            $vars['prefix'] = $instance['prefix'];
+        
+        if( isset( $instance['tax'] ) )
+            $vars['tax'] = $instance['tax'];
+        
+        if( isset( $instance['term'] ) )
+            $vars['term'] = $instance['term'];
+        
         self::template_render( 'widget', $vars );
     }
     
@@ -75,11 +87,24 @@ class CPTC_Widget extends WP_Widget {
      * Widget on update handler
      */
     function update( $new_instance, $old_instance ) {
+        $term = false;
         $instance = $old_instance;
         $instance['title'] = sanitize_text_field( $new_instance['title'] );
         
         if ( in_array( $new_instance['type'], get_post_types( array( 'public' => true ) ) ) )
             $instance['type'] = $new_instance['type'];
+        
+        $instance['count'] = absint( $new_instance['count'] );
+        $instance['prefix'] = esc_attr( $new_instance['prefix'] );
+        
+        if ( in_array( $new_instance['tax'], get_object_taxonomies( $instance['type'] ) ) )
+            $instance['tax'] = $new_instance['tax'];
+        
+        if( !empty( $new_instance['term'] ) && !empty( $instance['tax'] ) )
+            $term = get_terms( $instance['tax'], array( 'slug' => $new_instance['term'], 'hide_empty' => false ) );
+        
+        if( !empty( $term ) )
+            $instance['term'] = $new_instance['term'];
         
         return $instance;
     }
@@ -89,6 +114,7 @@ class CPTC_Widget extends WP_Widget {
      */
     function form( $instance ) {
         $vars = array();
+        $vars['max_items'] = 10;
         
         $vars['title'] = '';
         $vars['title_id'] = $this->get_field_id( 'title' );
@@ -98,6 +124,24 @@ class CPTC_Widget extends WP_Widget {
         $vars['type_id'] = $this->get_field_id( 'type' );
         $vars['type_name'] = $this->get_field_name( 'type' );
         
+        $vars['count'] = '';
+        $vars['count_id'] = $this->get_field_id( 'count' );
+        $vars['count_name'] = $this->get_field_name( 'count' );
+        
+        $vars['prefix'] = '';
+        $vars['prefix_id'] = $this->get_field_id( 'prefix' );
+        $vars['prefix_name'] = $this->get_field_name( 'prefix' );
+        
+        $vars['tax'] = '';
+        $vars['taxs'] = array();
+        $vars['tax_id'] = $this->get_field_id( 'tax' );
+        $vars['tax_name'] = $this->get_field_name( 'tax' );
+        
+        $vars['term'] = '';
+        $vars['terms'] = array();
+        $vars['term_id'] = $this->get_field_id( 'term' );
+        $vars['term_name'] = $this->get_field_name( 'term' );
+        
         $vars['types'] = get_post_types( array( 'public' => true ), 'objects' );
         
         if( isset( $instance['title'] ) )
@@ -105,6 +149,24 @@ class CPTC_Widget extends WP_Widget {
         
         if( isset( $instance['type'] ) )
             $vars['type'] = esc_attr( $instance['type'] );
+        
+        if( isset( $instance['count'] ) )
+            $vars['count'] = esc_attr( $instance['count'] );
+        
+        if( isset( $instance['prefix'] ) )
+            $vars['prefix'] = esc_attr( $instance['prefix'] );
+        
+        if( isset( $instance['tax'] ) )
+            $vars['tax'] = esc_attr( $instance['tax'] );
+        
+        if( isset( $instance['term'] ) )
+            $vars['term'] = esc_attr( $instance['term'] );
+        
+        if( !empty( $vars['type'] ) )
+            $vars['taxs'] = get_object_taxonomies( $vars['type'], 'objects' );
+        
+        if( !empty( $vars['tax'] ) )
+            $vars['terms'] = get_terms( $vars['tax'], array( 'hide_empty' => false ) );
         
         self::template_render( 'form', $vars );
     }

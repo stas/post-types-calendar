@@ -20,8 +20,80 @@
     <?php else: ?>
         <br/>
         <em>
-            <?php _e( 'No types are available yet.','cptc' )?>
+            <?php _e( 'No content types are available yet.','cptc' )?>
         </em>
     <?php endif; ?>
-    <?php do_action( 'cptc-calendar-widget', $type ); ?>
+</p>
+
+<p>
+    <label for="<?php echo $count_id; ?>">
+        <?php _e( 'Items listed below calendar', 'cptc' ); ?>:
+    </label> 
+    <?php if( !empty( $type ) ): ?>
+        <select class="widefat" id="<?php echo $count_id; ?>" name="<?php echo $count_name; ?>">
+            <?php while( $max_items >= 0 ): ?>
+                <option value="<?php echo $max_items; ?>" <?php selected( $max_items, $count ); ?> >
+                    <?php echo $max_items; ?>
+                </option>
+                <?php $max_items--; ?>
+            <?php endwhile; ?>
+        </select>
+    <?php else: ?>
+        <br/>
+        <em>
+            <?php _e( 'No content type was selected yet.','cptc' )?>
+        </em>
+    <?php endif; ?>
+</p>
+
+<p>
+    <label for="<?php echo $prefix_id; ?>">
+        <?php _e( 'Prefix items with', 'cptc' ); ?>:
+    </label> 
+    <input class="widefat" id="<?php echo $prefix_id; ?>" name="<?php echo $prefix_name; ?>" type="text" value="<?php echo $prefix; ?>" />
+    <br/>
+    <em>
+        <?php _e( 'The above content will be prefixed before every listed item.','cptc' )?>
+        <?php _e( 'Output date using <code>date()</code> formatting. Eg.: <code>F j &mdash;</code>','cptc' )?>
+    </em>
+</p>
+
+<p>
+    <label for="<?php echo $tax_id; ?>">
+        <?php _e( 'Content taxonomy', 'cptc' ); ?>:
+    </label>
+    <?php if( !empty( $taxs ) ): ?>
+        <select class="widefat" id="<?php echo $tax_id; ?>" name="<?php echo $tax_name; ?>">
+            <?php foreach( $taxs as $tx ): ?>
+                <option value="<?php echo $tx->name; ?>" <?php selected( $tx->name, $tax ); ?> >
+                    <?php echo $tx->label; ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    <?php else: ?>
+        <br/>
+        <em>
+            <?php _e( 'No taxonomy available or post type was not selected.','cptc' ); ?>
+        </em>
+    <?php endif; ?>
+</p>
+
+<p>
+    <label for="<?php echo $term_id; ?>">
+        <?php _e( 'Taxonomy Term', 'cptc' ); ?>:
+    </label>
+    <?php if( !empty( $terms ) ): ?>
+        <select class="widefat" id="<?php echo $term_id; ?>" name="<?php echo $term_name; ?>">
+            <?php foreach( $terms as $tm ): ?>
+                <option value="<?php echo $tm->slug; ?>" <?php selected( $tm->slug, $term ); ?> >
+                    <?php echo $tm->name; ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    <?php else: ?>
+        <br/>
+        <em>
+            <?php _e( 'No taxonomy term available or taxonomy was not selected.','cptc' ); ?>
+        </em>
+    <?php endif; ?>
 </p>
