@@ -54,7 +54,7 @@
     <br/>
     <em>
         <?php _e( 'The above content will be prefixed before every listed item.','cptc' )?>
-        <?php _e( 'Output date using <code>date()</code> formatting. Eg.: <code>F j &mdash;</code>','cptc' )?>
+        <?php _e( 'Output date using <code>date()</code> formatting. Eg.: <code>j F &mdash;</code>','cptc' )?>
     </em>
 </p>
 
@@ -64,6 +64,7 @@
     </label>
     <?php if( !empty( $taxs ) ): ?>
         <select class="widefat" id="<?php echo $tax_id; ?>" name="<?php echo $tax_name; ?>">
+            <option value="" <?php selected( '', $tax ); ?> ><?php _e( '(none)', 'cptc' ) ?></option>
             <?php foreach( $taxs as $tx ): ?>
                 <option value="<?php echo $tx->name; ?>" <?php selected( $tx->name, $tax ); ?> >
                     <?php echo $tx->label; ?>
@@ -84,6 +85,7 @@
     </label>
     <?php if( !empty( $terms ) ): ?>
         <select class="widefat" id="<?php echo $term_id; ?>" name="<?php echo $term_name; ?>">
+            <option value="" <?php selected( '', $term ); ?> ><?php _e( '(none)', 'cptc' ) ?></option>
             <?php foreach( $terms as $tm ): ?>
                 <option value="<?php echo $tm->slug; ?>" <?php selected( $tm->slug, $term ); ?> >
                     <?php echo $tm->name; ?>
