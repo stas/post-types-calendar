@@ -30,6 +30,6 @@
 <?php endif; ?>
 </div>
 
-<?php do_action( 'cptc-calendar-widget', compact( $type, $tax, $term ) ); ?>
-
 <?php echo $after_widget; ?>
+
+<?php do_action( 'cptc-calendar-widget', compact( $type, $tax, $term ) ); ?>

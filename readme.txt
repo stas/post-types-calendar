@@ -30,6 +30,7 @@ Before asking questions, please check the [http://github.com/stas/post-types-cal
 
 = 0.3 =
 * Default options added
+* Added widget prefixes and suffixes
 
 = 0.2 =
 * A bunch of new options added

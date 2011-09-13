@@ -87,7 +87,7 @@ class CPTC_Widget extends WP_Widget {
         
         if( isset( $instance['term'] ) )
             $vars['term'] = $instance['term'];
-        
+            
         self::template_render( 'widget', $vars );
     }
     
