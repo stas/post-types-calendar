@@ -1,5 +1,7 @@
+<?php echo $before_widget; ?>
+
 <?php if( !empty( $title ) ) : ?>
-    <?php echo $title; ?>
+    <?php echo $before_title . $title . $after_title; ?>
 <?php endif; ?>
 
 <div id="calendar_wrap">
@@ -27,5 +29,7 @@
     <ul>
 <?php endif; ?>
 </div>
+
+<?php echo $after_widget; ?>
 
 <?php do_action( 'cptc-calendar-widget', compact( $type, $tax, $term ) ); ?>

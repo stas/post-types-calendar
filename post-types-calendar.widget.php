@@ -4,7 +4,7 @@ Plugin Name: Calendar Widget For Custom Post Types
 Plugin URI: http://wordpress.org/extend/plugins/post-types-calendar/
 Description: A new widget that shows a calendar based on existing post types.
 Author: Stas Sușcov
-Version: 0.2
+Version: 0.3
 Author URI: http://stas.nerd.ro/
 */
 
@@ -62,6 +62,8 @@ class CPTC_Widget extends WP_Widget {
         $vars['title'] = '';
         $vars['type'] = '';
         
+        extract( $args );
+        
         if( isset( $instance['title'] ) )
             $vars['title'] = apply_filters( 'widget_title', $instance['title'] );
         
@@ -79,6 +81,11 @@ class CPTC_Widget extends WP_Widget {
         
         if( isset( $instance['term'] ) )
             $vars['term'] = $instance['term'];
+            
+        $vars['before_widget'] = $args['before_widget'];
+        $vars['after_widget'] = $args['after_widget'];
+        $vars['before_title'] = $args['before_title'];
+        $vars['after_title'] = $args['after_title'];
         
         self::template_render( 'widget', $vars );
     }

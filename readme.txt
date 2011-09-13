@@ -3,7 +3,7 @@ Contributors: sushkov
 Tags: custom, post, types, cpt, calendar, widget
 Requires at least: WordPress 3.0
 Tested up to: WordPress 3.2.1
-Stable tag: 0.2
+Stable tag: 0.3
 Donate link: http://stas.nerd.ro/pub/donate/
 
 Because the builtin calendar doesn't have such an option.
@@ -27,6 +27,9 @@ Please follow the [standard installation procedure for WordPress plugins](http:/
 Before asking questions, please check the [http://github.com/stas/post-types-calendar](http://github.com/stas/post-types-calendar).
 
 == Changelog ==
+
+= 0.3 =
+* Added widget prefixes and suffixes
 
 = 0.2 =
 * A bunch of new options added
