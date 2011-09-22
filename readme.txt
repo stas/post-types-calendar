@@ -1,4 +1,4 @@
-=== WordPress For Custom Post Types ===
+=== WordPress Calendar For Custom Post Types ===
 Contributors: sushkov
 Tags: custom, post, types, cpt, calendar, widget
 Requires at least: WordPress 3.0
