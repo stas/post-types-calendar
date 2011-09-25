@@ -18,13 +18,15 @@
     <ul>
     <?php $cal_items = get_posts( array( $tax => $term, 'post_type' => $type, 'numberposts' => $count ) ); ?>
     <?php foreach( $cal_items as $ci ): ?>
-        <li>
-            <?php $ci = apply_filters( 'cptc-calendar-list-item', $ci ); ?>
-            <?php if ( isset( $prefix ) ) : ?>
-                <?php echo mysql2date( $prefix, $ci->post_date); ?>
-            <?php endif; ?>
-            <a href="<?php echo get_post_permalink( $ci->ID ); ?>"><?php echo get_the_title( $ci->ID ); ?></a>
-        </li>
+        <?php $ci = apply_filters( 'cptc-calendar-list-item', $ci ); ?>
+        <?php if ( $ci ) : ?>
+            <li>
+                <?php if ( isset( $prefix ) ) : ?>
+                    <?php echo mysql2date( $prefix, $ci->post_date); ?>
+                <?php endif; ?>
+                <a href="<?php echo get_post_permalink( $ci->ID ); ?>"><?php echo get_the_title( $ci->ID ); ?></a>
+            </li>
+        <?php endif; ?>
     <?php endforeach; ?>
     <ul>
 <?php endif; ?>
