@@ -26,7 +26,9 @@ function _get_calendar( $initial = true, $args = true ) {
     }
     
     // Generate a cache/hooks name like `get_calendar-post_type` preserving backcompat
-    $cal_name = 'get_calendar' . ( $post_type != 'post' ) ? '_' . $post_type : '';
+    $cal_name = 'get_calendar';
+    if ( $post_type != 'post' )
+        $cal_name .= '-' . $post_type;
     
     $cache = array();
     $key = md5( $m . $monthnum . $year );
