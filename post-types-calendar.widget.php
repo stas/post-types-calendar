@@ -25,6 +25,7 @@ class CPTC_Widget extends WP_Widget {
     function init() {
         add_action( 'init', array( __CLASS__, 'textdomain' ) );
         add_action( 'widgets_init', array( __CLASS__, 'register_widget' ) );
+        add_filter('rewrite_rules_array', array(__CLASS__,'add_rewrite_rules'));
     }
     
     /**
@@ -113,6 +114,7 @@ class CPTC_Widget extends WP_Widget {
         
         if( $new_instance['term'] == '' || !empty( $term ) )
             $instance['term'] = $new_instance['term'];
+               
         
         return $instance;
     }
@@ -204,6 +206,31 @@ class CPTC_Widget extends WP_Widget {
             echo $data;
         else
             return $data;
+    }
+    
+
+    /**
+    * Function to create rewrite rules based on active widgets instances
+    */
+    function add_rewrite_rules($rules) {
+        
+		$new_rules = array();    	
+    	$active_widgets = get_option('widget_cptc-widget');
+    	
+    	foreach( $active_widgets as $widget)
+    	{
+    		if ( isset($widget['type']) )
+    		{
+    			$cpt = get_post_type_object($widget['type']);
+    			$slug = isset($cpt->rewrite['slug']) && $cpt->rewrite['slug'] != '' ?  $cpt->rewrite['slug'] : $widget['type'];
+    			$new_rules["$slug/([0-9]{4})/([0-9]{2})/page/?([0-9]{1,})/?$"] = 'index.php?post_type='.$widget['type'].'&year=$matches[1]&paged=$matches[2]';
+    			$new_rules["$slug/([0-9]{4})/([0-9]{2})/?([0-9]{2})?/?$"] = 'index.php?post_type='.$widget['type'].'&year=$matches[1]&monthnum=$matches[2]&day=$matches[3]';
+    		}
+    	
+    	}
+    	var_dump($cpt);
+	    $rules = $new_rules + $rules;
+	    return $rules;
     }
 }
 
