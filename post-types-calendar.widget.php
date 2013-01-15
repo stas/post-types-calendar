@@ -1,212 +1,265 @@
 <?php
-/*
-Plugin Name: Calendar Widget For Custom Post Types
-Plugin URI: http://wordpress.org/extend/plugins/post-types-calendar/
-Description: A new widget that shows a calendar based on existing post types.
-Author: Stas Sușcov
-Version: 0.3
-Author URI: http://stas.nerd.ro/
-*/
-
-define( 'CPTC_ROOT', dirname( __FILE__ ) );
-define( 'CPTC_WEB_ROOT', WP_PLUGIN_URL . '/' . basename( CPTC_ROOT ) );
-
-require_once CPTC_ROOT . '/get_calendar.php';
-
-class CPTC_Widget extends WP_Widget {
-    /**
-     * Widget Namespace
-     */
-    static $namespace = 'cptc-widget';
+/**
+ * Display calendar with days that have posts as links.
+ *
+ * The calendar is cached, which will be retrieved, if it exists. If there are
+ * no posts for the month, then it will not be displayed.
+ * 
+ * @param bool $initial Optional, default is true. Use initial calendar names.
+ * @param Mixed $args Optional, check the $defaults inside function body
+ */
+function _get_calendar( $initial = true, $args = true ) {
+    global $wpdb, $m, $monthnum, $year, $wp_locale, $posts;
     
-    /**
-     * Static constructor
-     */
-    function init() {
-        add_action( 'init', array( __CLASS__, 'textdomain' ) );
-        add_action( 'widgets_init', array( __CLASS__, 'register_widget' ) );
+    $defaults = array(
+        'echo' => true,
+        'post_type' => 'post',
+        'post_status' => 'publish'
+    );
+    
+    // Backcompat support
+    if ( is_bool( $args ) )
+        $echo = $args;
+    elseif ( is_array( $args ) ) {
+        $cal_args = wp_parse_args( $args, $defaults );
+        extract( $cal_args, EXTR_SKIP );
     }
     
-    /**
-     * Widget loader
-     */
-    function register_widget() {
-        register_widget( __CLASS__ );
+    // Generate a cache/hooks name like `get_calendar-post_type` preserving backcompat
+    $cal_name = 'get_calendar' . ( $post_type != 'post' ) ? '_' . $post_type : '';
+    
+    $cache = array();
+    $key = md5( $m . $monthnum . $year );
+    if ( $cache = wp_cache_get( $cal_name, 'calendar' ) ) {
+        if ( is_array($cache) && isset( $cache[ $key ] ) ) {
+            if ( $echo ) {
+                echo apply_filters( $cal_name,  $cache[$key] );
+                return;
+            } else {
+                return apply_filters( $cal_name,  $cache[$key] );
+            }
+        }
     }
     
-    /**
-     * Widget constructor
-     */
-    function CPTC_Widget() {
-        $widget_name = __( 'Post Types Calendar Widget', 'cptc' );
-        $widget_vars = array(
-            'classname' => self::$namespace,
-            'description' => __( 'Shows a calendar widget for selected post type', 'cptc' )
-        );
-        parent::WP_Widget( self::$namespace, $widget_name, $widget_vars );
-    }
+    if ( !is_array($cache) )
+        $cache = array();
     
-    /**
-    * i18n
-    */
-    function textdomain() {
-        load_plugin_textdomain( 'cptc', false, basename( CPTC_ROOT ) . '/languages' );
-    }
-    
-    /**
-     * Widget content
-     */
-    function widget( $args, $instance ) {
-        $vars = array();
-        
-        $vars = array_merge( $args,
-            array(
-                'title' => '',
-                'type' => '',
-                'count' => '',
-                'prefix' => '',
-                'tax' => '',
-                'term' => '',
+    // Quick check. If we have no posts at all, abort!
+    if ( !$posts ) {
+        $gotsome = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT 1 as test FROM `$wpdb->posts` WHERE `post_type` = %s AND `post_status` = %s LIMIT 1",
+                $post_type, $post_status
             )
         );
-        
-        if( isset( $instance['title'] ) )
-            $vars['title'] = apply_filters( 'widget_title', $instance['title'] );
-        
-        if( isset( $instance['type'] ) )
-            $vars['type'] = $instance['type'];
-        
-        if( isset( $instance['count'] ) )
-            $vars['count'] = $instance['count'];
-        
-        if( isset( $instance['prefix'] ) )
-            $vars['prefix'] = $instance['prefix'];
-        
-        if( isset( $instance['tax'] ) )
-            $vars['tax'] = $instance['tax'];
-        
-        if( isset( $instance['term'] ) )
-            $vars['term'] = $instance['term'];
-            
-        self::template_render( 'widget', $vars );
+        if ( !$gotsome ) {
+            $cache[ $key ] = '';
+            wp_cache_set( $cal_name, $cache, 'calendar' );
+            return;
+        }
     }
     
-    /**
-     * Widget on update handler
-     */
-    function update( $new_instance, $old_instance ) {
-        $term = false;
-        $instance = $old_instance;
-        $instance['title'] = sanitize_text_field( $new_instance['title'] );
-        
-        if ( in_array( $new_instance['type'], get_post_types( array( 'public' => true ) ) ) )
-            $instance['type'] = $new_instance['type'];
-        
-        $instance['count'] = absint( $new_instance['count'] );
-        $instance['prefix'] = esc_attr( $new_instance['prefix'] );
-        
-        if ( $new_instance['tax'] == '' || in_array( $new_instance['tax'], get_object_taxonomies( $instance['type'] ) ) )
-            $instance['tax'] = $new_instance['tax'];
-        
-        if( !empty( $new_instance['term'] ) && !empty( $instance['tax'] ) )
-            $term = get_terms( $instance['tax'], array( 'slug' => $new_instance['term'], 'hide_empty' => false ) );
-        
-        if( $new_instance['term'] == '' || !empty( $term ) )
-            $instance['term'] = $new_instance['term'];
-        
-        return $instance;
-    }
+    if ( isset($_GET['w']) )
+        $w = ''.intval($_GET['w']);
     
-    /**
-     * Widget form
-     */
-    function form( $instance ) {
-        $vars = array();
-        $vars['max_items'] = 10;
-        
-        $vars['title'] = '';
-        $vars['title_id'] = $this->get_field_id( 'title' );
-        $vars['title_name'] = $this->get_field_name( 'title' );
-        
-        $vars['type'] = '';
-        $vars['type_id'] = $this->get_field_id( 'type' );
-        $vars['type_name'] = $this->get_field_name( 'type' );
-        
-        $vars['count'] = '';
-        $vars['count_id'] = $this->get_field_id( 'count' );
-        $vars['count_name'] = $this->get_field_name( 'count' );
-        
-        $vars['prefix'] = '';
-        $vars['prefix_id'] = $this->get_field_id( 'prefix' );
-        $vars['prefix_name'] = $this->get_field_name( 'prefix' );
-        
-        $vars['tax'] = '';
-        $vars['taxs'] = array();
-        $vars['tax_id'] = $this->get_field_id( 'tax' );
-        $vars['tax_name'] = $this->get_field_name( 'tax' );
-        
-        $vars['term'] = '';
-        $vars['terms'] = array();
-        $vars['term_id'] = $this->get_field_id( 'term' );
-        $vars['term_name'] = $this->get_field_name( 'term' );
-        
-        $vars['types'] = get_post_types( array( 'public' => true ), 'objects' );
-        
-        if( isset( $instance['title'] ) )
-            $vars['title'] = sanitize_text_field( $instance['title'] );
-        
-        if( isset( $instance['type'] ) )
-            $vars['type'] = esc_attr( $instance['type'] );
-        
-        if( isset( $instance['count'] ) )
-            $vars['count'] = esc_attr( $instance['count'] );
-        
-        if( isset( $instance['prefix'] ) )
-            $vars['prefix'] = esc_attr( $instance['prefix'] );
-        
-        if( isset( $instance['tax'] ) )
-            $vars['tax'] = esc_attr( $instance['tax'] );
-        
-        if( isset( $instance['term'] ) )
-            $vars['term'] = esc_attr( $instance['term'] );
-        
-        if( !empty( $vars['type'] ) )
-            $vars['taxs'] = get_object_taxonomies( $vars['type'], 'objects' );
-        
-        if( !empty( $vars['tax'] ) )
-            $vars['terms'] = get_terms( $vars['tax'], array( 'hide_empty' => false ) );
-        
-        self::template_render( 'form', $vars );
-    }
+    // week_begins = 0 stands for Sunday
+    $week_begins = intval(get_option('start_of_week'));
     
-    /**
-     * template_render( $name, $vars = null, $echo = true )
-     *
-     * Helper to load and render templates easily
-     * @param String $name, the name of the template
-     * @param Mixed $vars, some variables you want to pass to the template
-     * @param Boolean $echo, to echo the results or return as data
-     * @return String $data, the resulted data if $echo is `false`
-     */
-    function template_render( $_name, $vars = null, $echo = true ) {
-        ob_start();
-        if( !empty( $vars ) )
-            extract( $vars );
-        
-        if( !isset( $path ) )
-            $path = dirname( __FILE__ ) . '/templates/';
-        
-        include $path . $_name . '.php';
-        
-        $data = ob_get_clean();
-        
-        if( $echo )
-            echo $data;
+    // Let's figure out when we are
+    if ( !empty($monthnum) && !empty($year) ) {
+        $thismonth = ''.zeroise(intval($monthnum), 2);
+        $thisyear = ''.intval($year);
+    } elseif ( !empty($w) ) {
+        // We need to get the month from MySQL
+        $thisyear = ''.intval(substr($m, 0, 4));
+        $d = (($w - 1) * 7) + 6; //it seems MySQL's weeks disagree with PHP's
+        $thismonth = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT DATE_FORMAT((DATE_ADD(%s, INTERVAL %d DAY) ), '%m')",
+                $thisyear . '0101', $d
+            )
+        );
+    } elseif ( !empty($m) ) {
+        $thisyear = ''.intval(substr($m, 0, 4));
+        if ( strlen($m) < 6 )
+                $thismonth = '01';
         else
-            return $data;
+                $thismonth = ''.zeroise(intval(substr($m, 4, 2)), 2);
+    } else {
+        $thisyear = gmdate('Y', current_time('timestamp'));
+        $thismonth = gmdate('m', current_time('timestamp'));
     }
+    
+    $unixmonth = mktime(0, 0 , 0, $thismonth, 1, $thisyear);
+    $last_day = date('t', $unixmonth);
+    
+    // Get the next and previous month and year with at least one post
+    $previous = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT MONTH(post_date) AS `month`, YEAR(post_date) AS `year`
+            FROM $wpdb->posts WHERE `post_date` < %s
+            AND `post_type` = %s AND `post_status` = %s
+            ORDER BY `post_date` DESC LIMIT 1",
+            $thisyear . '-' . $thismonth . '-01', $post_type, $post_status
+        )
+    );
+    $next = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT MONTH(post_date) AS `month`, YEAR(post_date) AS `year`
+            FROM $wpdb->posts WHERE `post_date` > %s
+            AND `post_type` = %s AND `post_status` = %s ORDER BY `post_date` ASC LIMIT 1",
+            $thisyear . '-' . $thismonth . '-' . $last_day . '23:59:59', $post_type, $post_status
+        )
+    );
+    
+    /* translators: Calendar caption: 1: month name, 2: 4-digit year */
+    $calendar_caption = _x('%1$s %2$s', 'calendar caption');
+    $calendar_output = '<table id="wp-calendar" class="' . $post_type . '">
+    <caption>' . sprintf($calendar_caption, $wp_locale->get_month($thismonth), date('Y', $unixmonth)) . '</caption>
+    <thead>
+    <tr>';
+    
+    $myweek = array();
+    
+    for ( $wdcount=0; $wdcount<=6; $wdcount++ ) {
+        $myweek[] = $wp_locale->get_weekday(($wdcount+$week_begins)%7);
+    }
+    
+    foreach ( $myweek as $wd ) {
+        $day_name = (true == $initial) ? $wp_locale->get_weekday_initial($wd) : $wp_locale->get_weekday_abbrev($wd);
+        $wd = esc_attr($wd);
+        $calendar_output .= "\n\t\t<th scope=\"col\" title=\"$wd\">$day_name</th>";
+    }
+    
+    $calendar_output .= '
+    </tr>
+    </thead>
+    
+    <tfoot>
+    <tr>';
+    
+    add_filter('month_link','with_post_type');
+    
+    if ( $previous ) {
+        $calendar_output .= "\n\t\t".'<td colspan="3" id="prev"><a href="' . get_month_link($previous->year, $previous->month) . '" title="' . esc_attr( sprintf(__('View posts for %1$s %2$s'), $wp_locale->get_month($previous->month), date('Y', mktime(0, 0 , 0, $previous->month, 1, $previous->year)))) . '">&laquo; ' . $wp_locale->get_month_abbrev($wp_locale->get_month($previous->month)) . '</a></td>';
+    } else {
+        $calendar_output .= "\n\t\t".'<td colspan="3" id="prev" class="pad">&nbsp;</td>';
+    }
+    
+    $calendar_output .= "\n\t\t".'<td class="pad">&nbsp;</td>';
+    
+    if ( $next ) {
+        $calendar_output .= "\n\t\t".'<td colspan="3" id="next"><a href="' . get_month_link($next->year, $next->month) . '" title="' . esc_attr( sprintf(__('View posts for %1$s %2$s'), $wp_locale->get_month($next->month), date('Y', mktime(0, 0 , 0, $next->month, 1, $next->year))) ) . '">' . $wp_locale->get_month_abbrev($wp_locale->get_month($next->month)) . ' &raquo;</a></td>';
+    } else {
+        $calendar_output .= "\n\t\t".'<td colspan="3" id="next" class="pad">&nbsp;</td>';
+    }
+    
+    $calendar_output .= '
+    </tr>
+    </tfoot>
+    
+    <tbody>
+    <tr>';
+    
+    // Get days with posts
+    $dayswithposts = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT DISTINCT DAYOFMONTH(post_date)
+            FROM $wpdb->posts WHERE `post_date` >= %s
+            AND `post_type` = %s AND post_status = %s
+            AND `post_date` <= %s",
+            $thisyear . '-' . $thismonth . '-01 00:00:00',
+            $post_type, $post_status,
+            $thisyear . '-' . $thismonth . '-' . $last_day . ' 23:59:59'
+        ), ARRAY_N
+    );
+    if ( $dayswithposts ) {
+        foreach ( (array) $dayswithposts as $daywith ) {
+            $daywithpost[] = $daywith[0];
+        }
+    } else {
+        $daywithpost = array();
+    }
+    
+    if (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== false || stripos($_SERVER['HTTP_USER_AGENT'], 'camino') !== false || stripos($_SERVER['HTTP_USER_AGENT'], 'safari') !== false)
+        $ak_title_separator = "\n";
+    else
+        $ak_title_separator = ', ';
+    
+    $ak_titles_for_day = array();
+    $ak_post_titles = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT `ID`, `post_title`, DAYOFMONTH(post_date) as `dom`
+            FROM $wpdb->posts
+            WHERE `post_date` >= %s
+            AND `post_date` <= %s
+            AND `post_type` = %s AND `post_status` = %s",
+            $thisyear . '-' . $thismonth . '-01 00:00:00',
+            $thisyear . '-' . $thismonth . '-' . $last_day . ' 23:59:59',
+            $post_type, $post_status
+        )
+    );
+    if ( $ak_post_titles ) {
+        foreach ( (array) $ak_post_titles as $ak_post_title ) {
+                $post_title = esc_attr( apply_filters( 'the_title', $ak_post_title->post_title, $ak_post_title->ID ) );
+                
+                if ( empty($ak_titles_for_day['day_'.$ak_post_title->dom]) )
+                    $ak_titles_for_day['day_'.$ak_post_title->dom] = '';
+                if ( empty($ak_titles_for_day["$ak_post_title->dom"]) ) // first one
+                    $ak_titles_for_day["$ak_post_title->dom"] = $post_title;
+                else
+                    $ak_titles_for_day["$ak_post_title->dom"] .= $ak_title_separator . $post_title;
+        }
+    }
+    
+    add_filter('day_link','with_post_type');
+    // See how much we should pad in the beginning
+    $pad = calendar_week_mod(date('w', $unixmonth)-$week_begins);
+    if ( 0 != $pad )
+        $calendar_output .= "\n\t\t".'<td colspan="'. esc_attr($pad) .'" class="pad">&nbsp;</td>';
+    
+    $daysinmonth = intval(date('t', $unixmonth));
+    for ( $day = 1; $day <= $daysinmonth; ++$day ) {
+        if ( isset($newrow) && $newrow )
+            $calendar_output .= "\n\t</tr>\n\t<tr>\n\t\t";
+        $newrow = false;
+        
+        if ( $day == gmdate('j', current_time('timestamp')) && $thismonth == gmdate('m', current_time('timestamp')) && $thisyear == gmdate('Y', current_time('timestamp')) )
+            $calendar_output .= '<td id="today">';
+        else
+            $calendar_output .= '<td>';
+        
+        if ( in_array($day, $daywithpost) ) // any posts today?
+                $calendar_output .= '<a href="' . get_day_link( $thisyear, $thismonth, $day ) . '" title="' . esc_attr( $ak_titles_for_day[ $day ] ) . "\">$day</a>";
+        else
+            $calendar_output .= $day;
+        $calendar_output .= '</td>';
+        
+        if ( 6 == calendar_week_mod(date('w', mktime(0, 0 , 0, $thismonth, $day, $thisyear))-$week_begins) )
+            $newrow = true;
+    }
+    
+    $pad = 7 - calendar_week_mod(date('w', mktime(0, 0 , 0, $thismonth, $day, $thisyear))-$week_begins);
+    if ( $pad != 0 && $pad != 7 )
+        $calendar_output .= "\n\t\t".'<td class="pad" colspan="'. esc_attr($pad) .'">&nbsp;</td>';
+    
+    $calendar_output .= "\n\t</tr>\n\t</tbody>\n\t</table>";
+    
+    $cache[ $key ] = $calendar_output;
+    wp_cache_set( $cal_name, $cache, 'calendar' );
+    
+    if ( $echo )
+        echo apply_filters( $cal_name,  $calendar_output );
+    else
+        return apply_filters( $cal_name,  $calendar_output );
 }
 
-CPTC_Widget::init();
-
+function with_post_type($link){
+	global $post_type;	
+	//In case slug is different that post type we retrieve full object
+	$cpt = get_post_type_object($post_type);
+	$slug = isset($cpt->rewrite['slug']) && $cpt->rewrite['slug'] != '' ? $cpt->rewrite['slug'] :  $post_type;
+		
+	return str_replace(site_url(), site_url($slug), $link);
+}
 ?>
